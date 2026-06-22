@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-test:
-    # 项目是 WinForms + x86 + Jet OLEDB，必须用 Windows runner
+    # 项目是 WinForms（net9.0-windows），必须用 Windows runner
     runs-on: windows-latest
 
     steps:
@@ -32,15 +32,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       # 5. 运行测试
-      #    注意：依赖 Jet OLEDB 的数据库测试在 CI runner 上无法运行
-      #    （runner 没有 32 位 Jet 驱动）。这里只跑不依赖数据库的单元测试，
-      #    通过 Category 过滤掉需要真实数据库/硬件的测试。
-      #    测试代码里用 [Trait("Category", "RequiresDatabase")] 等标记区分。
-      - name: Test (unit, no external deps)
-        run: dotnet test --configuration Release --no-build --filter "Category!=RequiresDatabase&Category!=Integration&Category!=E2E"
+      #    SQLite 跨平台、无需额外驱动，单元测试与 Repository 测试均可在
+      #    CI runner 上原生运行。仅过滤掉需要端到端组装的测试（Integration/E2E）。
+      - name: Test (unit + repository)
+        run: dotnet test --configuration Release --no-build --filter "Category!=Integration&Category!=E2E"
 
 # 说明：
 # - 单元测试（PickupService，用 NSubstitute Mock 依赖）→ CI 可跑
-# - Repository 测试（需 Jet 驱动）→ 标记 RequiresDatabase，CI 跳过，本地跑
-# - 集成 / 端到端测试（需启动 Mock 程序）→ 标记 Integration / E2E，CI 跳过，本地跑
-# 这样 CI 保证"编译通过 + 核心业务逻辑测试通过"，作为合并的最低门槛。
+# - Repository 测试（SQLite 临时库，无需额外驱动）→ CI 可跑
+# - 集成 / 端到端测试（需启动整套 Fake + 界面）→ 标记 Integration / E2E，CI 跳过，本地跑
+# 这样 CI 保证"编译通过 + 核心业务逻辑与数据访问测试通过"，作为合并的最低门槛。
