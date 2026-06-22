@@ -68,11 +68,11 @@
 ## 技术栈与约束
 
 - **语言/框架**：C# .NET 9 WinForms
-- **平台**：x86（因为用 Jet OLEDB 4.0 连 Access，Jet 是 32 位）——**不要改成 x64/AnyCPU**
-- **数据库**：Access (.mdb)，`System.Data.OleDb`，参数化查询
+- **平台**：AnyCPU（SQLite 原生库支持多架构，无需锁定位数）
+- **数据库**：SQLite (.db)，`Microsoft.Data.Sqlite`，参数化查询
 - **测试**：xUnit + NSubstitute（Mock 硬件接口做单元测试）
-- **硬件 Mock**：MockPLC(TCP 9002)、MockScanner(TCP 9001)、MockMES(HTTP 9003) 是独立程序
-- **接口抽象**：业务只依赖 `IPlcController`/`IScanner`/`IMesService`，3 行切换 Mock/生产（见 002-DESIGN.md 第六节）
+- **硬件**：进程内 Fake（`FakePlcController`/`FakeScanner`/`FakeMesService`）模拟硬件/MES，让 App 无需真实硬件即可运行
+- **接口抽象**：业务只依赖 `IPlcController`/`IScanner`/`IMesService`，3 行切换 Fake/生产（见 002-DESIGN.md 第六节）
 
 ---
 
@@ -91,4 +91,4 @@
 
 - Shell：Windows，PowerShell 主用；Bash 工具处理中文路径/文件名更稳（PowerShell 传中文易乱码）。
 - GitHub 连接偶尔超时，push 失败时重试即可。
-- 测试注意：依赖 Jet OLEDB 的数据库测试在 CI runner 上跑不了（runner 没 32 位 Jet 驱动），用 `[Trait("Category","RequiresDatabase")]` 等标记区分，CI 只跑纯单元测试，本地跑全部。
+- 测试注意：SQLite 跨平台、无需额外驱动，数据库测试在 CI runner 上可原生运行。端到端测试（启动整套 Fake + 界面）若不适合在 CI 跑，可用 `[Trait("Category","E2E")]` 标记区分，CI 跑单元 + Repository 测试，本地跑全部。

@@ -161,12 +161,12 @@
 ### 5.2 技术约束
 - 开发语言：C# .NET 9
 - UI 框架：WinForms
-- 数据库：Access (.mdb)
-- 硬件通信：Mock 独立程序（TCP/HTTP），生产环境可替换为真实硬件
+- 数据库：SQLite (.db)
+- 硬件通信：进程内 Fake 模拟硬件/MES，生产环境可替换为真实硬件
 
 ### 5.3 假设与依赖
 - 假设：仓库中已有入库的劈刀数据（可通过数据库脚本预置）
-- 依赖：MockPLC、MockScanner、MockMES 三个独立程序已启动并可连接
+- 依赖：硬件/MES 由进程内 Fake 实现（`FakePlcController`/`FakeScanner`/`FakeMesService`），App 启动即可用，无需外部程序
 
 ---
 

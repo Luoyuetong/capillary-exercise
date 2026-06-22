@@ -37,8 +37,8 @@
 └──────────────┘ └──────────────┘ └──────────────┘
        ↓              ↓              ↓
 ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│ TcpPlcClient │ │ HttpMesClient│ │ Access DB    │
-│ TcpScanner   │ │              │ │ (.mdb)       │
+│ FakePlc      │ │ FakeMes      │ │ SQLite DB    │
+│ Controller   │ │ Service      │ │ (.db)        │
 └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
@@ -122,7 +122,7 @@ public interface IPlcController
 ```
 
 **实现类**：
-- `TcpPlcClient` — 连接 MockPLC (127.0.0.1:9002)
+- `FakePlcController` — 进程内模拟 PLC，按指令返回成功/失败，无需真实硬件
 - 生产环境可替换为 `FinsPlcClient`（FINS 协议）
 
 ### 4.2 IScanner（扫码器接口）
@@ -143,7 +143,7 @@ public interface IScanner
 ```
 
 **实现类**：
-- `TcpScannerClient` — 连接 MockScanner (127.0.0.1:9001)
+- `FakeScanner` — 进程内模拟扫码器，返回预置条码（可配置为模拟失败）
 - 生产环境可替换为 `SerialScannerClient`（串口）
 
 ### 4.3 IMesService（MES 接口）
@@ -161,8 +161,8 @@ public interface IMesService
 ```
 
 **实现类**：
-- `HttpMesClient` — 调用 MockMES HTTP API (http://127.0.0.1:9003)
-- 生产环境只需改 URL 为真实 MES 地址
+- `FakeMesService` — 进程内模拟 MES，返回预置工单→类型映射（可配置为拒绝上报）
+- 生产环境可替换为 `HttpMesClient`（调用真实 MES HTTP API，只需改 URL）
 
 ### 4.4 ICapillaryRepository（劈刀数据访问接口）
 
@@ -296,15 +296,15 @@ static class Program
         ApplicationConfiguration.Initialize();
 
         // 数据层
-        var dbPath = Path.Combine(Application.StartupPath, "CapillaryData.mdb");
+        var dbPath = Path.Combine(Application.StartupPath, "CapillaryData.db");
         var db = new DbHelper(dbPath);
         var capRepo = new CapillaryRepository(db);
         var logRepo = new LogRepository(db);
 
-        // 硬件层（Mock）
-        IPlcController plc = new TcpPlcClient("127.0.0.1", 9002);
-        IScanner scanner = new TcpScannerClient("127.0.0.1", 9001);
-        IMesService mes = new HttpMesClient("http://127.0.0.1:9003");
+        // 硬件层（进程内 Fake）
+        IPlcController plc = new FakePlcController();
+        IScanner scanner = new FakeScanner();
+        IMesService mes = new FakeMesService();
 
         // 业务层
         var pickupService = new PickupService(plc, scanner, mes, capRepo, logRepo);
@@ -324,7 +324,6 @@ IPlcController plc = new FinsPlcClient("192.168.1.10", 9600);
 IScanner scanner = new SerialScannerClient("COM3", 9600);
 IMesService mes = new HttpMesClient("http://mes.company.com/api");
 ```
-
 ---
 
 ## 七、技术选型
@@ -333,10 +332,10 @@ IMesService mes = new HttpMesClient("http://mes.company.com/api");
 |------|------|------|
 | 开发语言 | C# .NET 9 | 与参考项目保持一致 |
 | UI 框架 | WinForms | 桌面应用，简单直观 |
-| 数据库 | Access (.mdb) | 教学环境，与参考项目一致 |
-| PLC 通信 | TCP (Mock) | 生产可换 FINS 协议 |
-| 扫码器 | TCP (Mock) | 生产可换串口 |
-| MES | HTTP (Mock) | 生产只需换 URL |
+| 数据库 | SQLite (.db) | 跨平台、零配置、单文件，教学友好 |
+| PLC 通信 | 进程内 Fake | 生产可换 FINS 协议 |
+| 扫码器 | 进程内 Fake | 生产可换串口 |
+| MES | 进程内 Fake | 生产可换 HTTP 调用真实 MES |
 | 测试框架 | xUnit + NSubstitute | 单元测试 + Mock |
 
 ---
@@ -352,12 +351,12 @@ src/
 │   │   └── PickupResult.cs
 │   ├── Hardware/
 │   │   ├── IPlcController.cs
-│   │   ├── TcpPlcClient.cs
+│   │   ├── FakePlcController.cs
 │   │   ├── IScanner.cs
-│   │   └── TcpScannerClient.cs
+│   │   └── FakeScanner.cs
 │   ├── Services/
 │   │   ├── IMesService.cs
-│   │   ├── HttpMesClient.cs
+│   │   ├── FakeMesService.cs
 │   │   └── PickupService.cs
 │   ├── Data/
 │   │   ├── DbHelper.cs
@@ -370,9 +369,7 @@ src/
 │   │   └── PickupForm.cs
 │   └── Program.cs
 │
-├── MockPLC/                        # Mock PLC 独立程序
-├── MockScanner/                    # Mock 扫码器独立程序
-└── MockMES/                        # Mock MES 独立程序
+└── （硬件/MES 由进程内 Fake 实现，无独立 Mock 程序）
 
 test/
 └── CapillaryExercise.Tests/
@@ -386,7 +383,7 @@ test/
 
 ### 9.1 为什么用接口抽象硬件？
 - **可测试性**：Service 层测试时，用 NSubstitute Mock 硬件接口，无需真实硬件
-- **可替换性**：Mock 环境用 TCP 客户端，生产环境换成 FINS/串口，业务逻辑零改动
+- **可替换性**：教学/演示环境用进程内 Fake，生产环境换成 FINS/串口/HTTP，业务逻辑零改动
 
 ### 9.2 为什么 Service 层接收 IProgress<string>？
 - UI 层传入 `IProgress<string>`，Service 每一步调用 `progress.Report("xxx")`

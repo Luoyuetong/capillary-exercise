@@ -34,10 +34,10 @@
 public PickupService(IPlcController plc, IScanner scanner) { ... }
 
 // ✗ 错误：依赖具体实现
-public PickupService(TcpPlcClient plc) { ... }
+public PickupService(FakePlcController plc) { ... }
 ```
 
-**理由**：可测试（Mock 替身）、可替换（Mock/生产切换）。见 `003-...两种Mock` 教学材料。
+**理由**：可测试（Mock 替身）、可替换（Fake/生产切换）。见 `003-...NSubstitute与手写Fake` 教学材料。
 
 ## 3. 依赖通过构造函数注入
 
@@ -48,7 +48,7 @@ private readonly IScanner _scanner;
 public PickupService(IScanner scanner) => _scanner = scanner;
 ```
 
-**禁止**：在类内部 `new TcpScannerClient(...)`（这会让依赖无法替换、无法测试）。
+**禁止**：在类内部 `new FakeScanner(...)`（这会让依赖无法替换、无法测试）。
 
 ## 4. 异步用 async/await，方法名带 Async
 
@@ -83,8 +83,8 @@ Task<string?> ScanAsync(...);            // 失败返回 null
 
 ```csharp
 // ✓ 正确：参数化
-cmd.CommandText = "SELECT * FROM CapillaryInfo WHERE Barcode = ?";
-cmd.Parameters.Add(new OleDbParameter("@barcode", barcode));
+cmd.CommandText = "SELECT * FROM CapillaryInfo WHERE Barcode = $barcode";
+cmd.Parameters.AddWithValue("$barcode", barcode);
 
 // ✗ 错误：拼接
 cmd.CommandText = $"SELECT * FROM CapillaryInfo WHERE Barcode = '{barcode}'";
