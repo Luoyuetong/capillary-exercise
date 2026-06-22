@@ -23,6 +23,16 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      # 2.1 安装 x86 的 .NET 9 运行时
+      #     测试项目锁 x86（为本地 Jet OLEDB 测试），dotnet test 启动的是
+      #     testhost.x86.exe，需要 x86 运行时。setup-dotnet 默认只装 x64，
+      #     故用官方脚本补装 x86 运行时到 testhost 查找的目录。
+      - name: Setup .NET 9 (x86 runtime)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile dotnet-install.ps1
+          ./dotnet-install.ps1 -Architecture x86 -Runtime dotnet -Channel 9.0 -InstallDir 'C:\Program Files (x86)\dotnet'
+
       # 3. 还原依赖
       - name: Restore
         run: dotnet restore
