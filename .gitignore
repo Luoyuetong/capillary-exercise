@@ -41,3 +41,6 @@ Thumbs.db
 
 # Scratch / temp
 tmp/
+
+# 会话交接文档：临时进度信息，不存档（稳定规约见 CLAUDE.md）
+handoff/
