@@ -69,7 +69,8 @@
 
 - **语言/框架**：C# .NET 9 WinForms
 - **平台**：AnyCPU（SQLite 原生库支持多架构，无需锁定位数）
-- **数据库**：SQLite (.db)，`Microsoft.Data.Sqlite`，参数化查询
+- **数据库**：SQLite (.db)，`Microsoft.Data.Sqlite`（钉 9.0.0），参数化查询
+- **时间存储**：SQLite 无原生 DateTime，`DateTime` 字段一律以 **ISO-8601 文本**（`ToString("o")`）存储、用 `DateTimeStyles.RoundtripKind` 读回。字典序即时间序，`FindOldestByType` 的 FIFO 排序依赖此约定。
 - **测试**：xUnit + NSubstitute（Mock 硬件接口做单元测试）
 - **硬件**：进程内 Fake（`FakePlcController`/`FakeScanner`/`FakeMesService`）模拟硬件/MES，让 App 无需真实硬件即可运行
 - **接口抽象**：业务只依赖 `IPlcController`/`IScanner`/`IMesService`，3 行切换 Fake/生产（见 002-DESIGN.md 第六节）
