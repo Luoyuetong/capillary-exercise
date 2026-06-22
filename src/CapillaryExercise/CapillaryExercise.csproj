@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- x86：因为用 Jet OLEDB 4.0 连 Access，Jet 是 32 位，不要改成 x64/AnyCPU -->
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+
+</Project>
