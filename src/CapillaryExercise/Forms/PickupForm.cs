@@ -1,4 +1,5 @@
 using System.Drawing;
+using CapillaryExercise.Demo;
 using CapillaryExercise.Models;
 using CapillaryExercise.Services;
 
@@ -9,19 +10,69 @@ namespace CapillaryExercise.Forms;
 /// 实时显示每一步进度（FR-02）并展示最终结果（FR-03）。
 /// 窗体只负责交互——业务编排在 Service 层，进度文字的渲染在 <see cref="PickupProgressTracker"/>，
 /// 二者均与 UI 解耦、可独立测试（见编码规范 §7/§8）。
+/// 顶部内置演示案例下拉与"重置演示数据"按钮，便于教学演示各分支（点选自动填参、重置使会改库的场景可重复）。
 /// </summary>
 public partial class PickupForm : Form
 {
     private readonly PickupService _pickupService;
+    private readonly IReadOnlyList<DemoScenario> _scenarios;
+    private readonly Action _resetDemoData;
 
     /// <summary>
-    /// 通过构造函数注入领料服务，窗体不自行 new 业务依赖（见编码规范 §3）。
+    /// 通过构造函数注入领料服务与演示配套，窗体不自行 new 业务依赖（见编码规范 §3）。
     /// </summary>
     /// <param name="pickupService">领料流程编排服务。</param>
-    public PickupForm(PickupService pickupService)
+    /// <param name="scenarios">内置演示案例列表，填充到顶部下拉框。</param>
+    /// <param name="resetDemoData">重置演示数据的回调（清库重置），供"重置"按钮调用。</param>
+    public PickupForm(
+        PickupService pickupService,
+        IReadOnlyList<DemoScenario> scenarios,
+        Action resetDemoData)
     {
         _pickupService = pickupService;
+        _scenarios = scenarios;
+        _resetDemoData = resetDemoData;
         InitializeComponent();
+        PopulateScenarios();
+    }
+
+    /// <summary>
+    /// 把演示案例填入下拉框并默认选中第一个（自动填好工单/机台）。
+    /// </summary>
+    private void PopulateScenarios()
+    {
+        foreach (var scenario in _scenarios)
+        {
+            _cmbScenario.Items.Add(scenario);
+        }
+        if (_cmbScenario.Items.Count > 0)
+        {
+            _cmbScenario.SelectedIndex = 0;  // 触发 OnScenarioChanged，自动填入第一个案例
+        }
+    }
+
+    /// <summary>
+    /// 选中演示案例时，把对应工单号/机台号填入输入框，并显示预期结果提示。
+    /// </summary>
+    private void OnScenarioChanged(object? sender, EventArgs e)
+    {
+        if (_cmbScenario.SelectedItem is not DemoScenario scenario)
+        {
+            return;
+        }
+        _txtWorkOrder.Text = scenario.WorkOrder;
+        _txtMachineNo.Text = scenario.MachineNo;
+        _lblHint.Text = $"预期：{scenario.Expectation}";
+    }
+
+    /// <summary>
+    /// "重置演示数据"按钮点击：清库重置，让成功/锁仓等会改库的场景可从干净状态重演。
+    /// </summary>
+    private void OnResetClick(object? sender, EventArgs e)
+    {
+        _resetDemoData();
+        ClearDisplay();
+        ShowResult("演示数据已重置，可重新演示各场景", success: true);
     }
 
     /// <summary>
